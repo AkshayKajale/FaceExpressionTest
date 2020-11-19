@@ -203,7 +203,7 @@ public class FirstFragment extends Fragment {
             // This method is called when the camera is opened. We start camera preview here.
             cameraOpenCloseLockFront.release();
             cameraDeviceRear = cameraDevice;
-            createCameraPreviewSessionFront();
+            createCameraPreviewSessionRear();
         }
 
         @Override
