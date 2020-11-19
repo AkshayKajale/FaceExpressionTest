@@ -311,8 +311,10 @@ public class FirstFragment extends Fragment {
             requestCameraPermission();
             return;
         }
-        setUpCameraOutputsFront(width, height);
-        configureTransformFront(width, height);
+//        setUpCameraOutputsFront(width, height);
+//        configureTransformFront(width, height);
+        setUpCameraOutputsRear(width, height);
+        configureTransformRear(width, height);
         Activity activity = getActivity();
         CameraManager manager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
 
