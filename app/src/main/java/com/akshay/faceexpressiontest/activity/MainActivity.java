@@ -52,8 +52,6 @@ public class MainActivity extends AppCompatActivity {
         System.out.println(Arrays.toString(resizedarray));
         float[][] prediction = new float[1][7];
         tflite.run(resizedarray,prediction);
-        System.out.println("Prediction"+prediction[0][1]);
-        System.out.println("Length"+ prediction[0].length);
         int maxIndex = 0;
         float max = prediction[0][0];
         for(int i = 0 ; i<prediction[0].length ; i++)
@@ -64,9 +62,7 @@ public class MainActivity extends AppCompatActivity {
                 maxIndex = i;
             }
         }
-        System.out.println("Prediction Probability"+max);
-        System.out.println("Prediction Class"+emotions[maxIndex]);
-
+        System.out.println("Prediction Class\t" +emotions[maxIndex]);
     }
 
     private MappedByteBuffer loadModelFile() throws IOException {
