@@ -35,10 +35,6 @@ android {
     buildFeatures {
         mlModelBinding true
     }
-    dependenciesInfo {
-        includeInApk true
-        includeInBundle true
-    }
 }
 
 dependencies {
@@ -52,8 +48,14 @@ dependencies {
     implementation 'org.tensorflow:tensorflow-lite-metadata:0.1.0-rc1'
     implementation 'org.tensorflow:tensorflow-lite-gpu:2.2.0'
     implementation 'org.tensorflow:tensorflow-android:1.13.1'
-    testImplementation 'junit:junit:4.+'
+//    implementation project(path: ':sdk')
+    testImplementation 'junit:junit:4.13.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
-    implementation 'org.tensorflow:tensorflow-lite:+'
+    implementation 'org.tensorflow:tensorflow-lite:2.3.0'
+
+
+    implementation 'com.darwin.viola:still:1.0.1'
+    implementation 'com.quickbirdstudios:opencv:4.3.0'
+    implementation "com.quickbirdstudios:yuvtomat:1.1.0"
 }
