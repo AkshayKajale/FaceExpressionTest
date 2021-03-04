@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import android.view.*;
@@ -37,6 +38,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -47,8 +49,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import com.akshay.faceexpressiontest.util.CompareSizesByViewAspectRatio;
+import com.darwin.viola.still.FaceDetectionListener;
+import com.darwin.viola.still.Viola;
+import com.darwin.viola.still.model.FaceDetectionError;
+import com.darwin.viola.still.model.FaceOptions;
+import com.darwin.viola.still.model.Result;
 import com.quickbirdstudios.yuv2mat.Yuv;
 
+import org.jetbrains.annotations.NotNull;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -58,7 +66,7 @@ import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.support.image.ImageProcessor;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.support.image.ops.ResizeOp;
-import org.tensorflow.lite.support.image.ops.ResizeWithCropOrPadOp;
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 public class FirstFragment extends Fragment {
 
@@ -71,9 +79,9 @@ public class FirstFragment extends Fragment {
     TensorImage tensorImage;
     ImageProcessor imageProcessor =
             new ImageProcessor.Builder()
-                    .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
+                    .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.BILINEAR))
                     .build();
-    private ByteBuffer imageBuffer;
+
 
     private String emotions[] = {"Angry", "Disgust","fear","surprise","Sad","Happy", "Neutral"};
 
@@ -115,11 +123,19 @@ public class FirstFragment extends Fragment {
     private CameraCharacteristics rearCameraCharacteristics;
     private Image latestImage;
     private Handler handler;
+    private static final int BATCH_SIZE = 1;
+    private static final int PIXEL_SIZE = 3;
+    private static final float THRESHOLD = 0.1f;
+
+    private static final int IMAGE_MEAN = 128;
+    private static final float IMAGE_STD = 128.0f;
+
 
 
 
     private final ImageReader.OnImageAvailableListener onImageAvailableListenerFront
             = new ImageReader.OnImageAvailableListener() {
+        @RequiresApi(api = Build.VERSION_CODES.Q)
         @Override
         public void onImageAvailable(ImageReader reader) {
 
@@ -131,21 +147,65 @@ public class FirstFragment extends Fragment {
             byte[] bytes = new byte[buffer.capacity()];
             buffer.get(bytes);
             Bitmap bitmapImage = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
-            tensorImage = new TensorImage(DataType.FLOAT32);
+            bitmapImage = toGrayscale(bitmapImage);
+            System.out.println("Space"+bitmapImage.getColorSpace());
+            System.out.println("This is Bitmap Pixel"+bitmapImage.getColor(20,20));
+
+            final FaceDetectionListener listener = new FaceDetectionListener() {
+                @Override
+                public void onFaceDetected(@NotNull Result result) {
+                    System.out.println("Face Count"+result.getFaceCount());
+                    result.getFacePortraits();
+                    System.out.println(result.getFacePortraits().get(0));
+                }
+
+                @Override
+                public void onFaceDetectionFailed(@NotNull FaceDetectionError error, @NotNull String message) {
+                    System.out.println("This is Message"+message);
+                }
+            };
+            Viola viola = new Viola(listener);
+            FaceOptions faceOptions = new FaceOptions.Builder()
+                    .enableProminentFaceDetection()
+                    .enableDebug()
+                    .build();
+            viola.detectFace(bitmapImage,faceOptions);
+
+            System.out.println("Min Face Size"+faceOptions.getMinimumFaceSize());
+            DataType myImageDataType = tflite.getInputTensor(0).dataType();
+            tensorImage = new TensorImage(myImageDataType);
             tensorImage.load(bitmapImage);
             tensorImage = imageProcessor.process(tensorImage);
             Log.d(TAG, "bitmap: height " + tensorImage.getHeight());
-//            passImageToTFModel(tensorImage);
+            System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImage.getTensorBuffer().getFloatArray()));
+            passImageToTFModel(tensorImage);
             latestImage.close();
         }
     };
+
+    public Bitmap toGrayscale(Bitmap bmpOriginal)
+    {
+        int width, height;
+        height = bmpOriginal.getHeight();
+        width = bmpOriginal.getWidth();
+
+        Bitmap bmpGrayscale = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmpGrayscale);
+        Paint paint = new Paint();
+        ColorMatrix cm = new ColorMatrix();
+        cm.setSaturation(0);
+        ColorMatrixColorFilter f = new ColorMatrixColorFilter(cm);
+        paint.setColorFilter(f);
+        c.drawBitmap(bmpOriginal, 0, 0, paint);
+        return bmpGrayscale;
+    }
 
     private final ImageReader.OnImageAvailableListener onImageAvailableListenerRear
             = new ImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(ImageReader reader) {
 
-            Log.d(TAG, "onImageAvailableListener Called");
+            //Log.d(TAG, "onImageAvailableListener Called");
         }
     };
 
@@ -279,8 +339,6 @@ public class FirstFragment extends Fragment {
         }
     };
 
-
-
     @Override
     public View onCreateView(
             LayoutInflater inflater, ViewGroup container,
@@ -329,8 +387,23 @@ public class FirstFragment extends Fragment {
     private void passImageToTFModel(TensorImage tensorImage)
     {
 
+        Log.d(String.valueOf(tensorImage.getHeight()),"Height");
+        Log.d(String.valueOf(tensorImage.getWidth()),"Width");
+        TensorBuffer probabilityBuffer = TensorBuffer.createDynamic(DataType.FLOAT32);
         float[][] prediction = new float[1][7];
-        tflite.run(tensorImage,prediction);
+        float image [] = tensorImage.getTensorBuffer().getFloatArray();
+        float [][][][] resizedarray = new float[1][48][48][1];
+        int index = 0;
+        for(int i = 0 ; i<48 ; i++)
+        {
+            for(int j = 0 ; j<48 ; j++)
+            {
+                resizedarray[0][i][j][0] = image[index++];
+            }
+        }
+        tflite.run(resizedarray,prediction);
+        Log.d(String.valueOf(probabilityBuffer),"Probability");
+
         int maxIndex = 0;
         float max = prediction[0][0];
         for(int i = 0 ; i<prediction[0].length ; i++)
@@ -416,8 +489,6 @@ public class FirstFragment extends Fragment {
             requestCameraPermission();
             return;
         }
-//        setUpCameraOutputsFront(width, height);
-//        configureTransformFront(width, height);
         setUpCameraOutputsRear(width, height);
         configureTransformRear(width, height);
         Activity activity = getActivity();
