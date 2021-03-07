@@ -896,7 +896,7 @@ public class FirstFragment extends Fragment {
                                 // Flash is automatically enabled when necessary.
 
                                 //Set fps range from 1 to 5
-                                Range<Integer> fpsRange = new Range<>(1,5);
+                                Range<Integer> fpsRange = new Range<>(1,1);
 
                                 previewRequestBuilderFront.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fpsRange);
 
