@@ -33,6 +33,7 @@ import com.akshay.faceexpressiontest.R;
 import com.akshay.faceexpressiontest.dependency.AutoFitTextureView;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -72,13 +73,19 @@ public class FirstFragment extends Fragment {
     private static final String TAG = "Camera2BasicFragment";
     private TensorFlowInferenceInterface inferenceInterface;
     private Interpreter tflite;
-    TensorImage tensorImage;
+    TensorImage tensorImageFront, tensorImageRear;
     DataType myImageDataType;
-    Viola viola;
-    Bitmap cameraBitmapImage;
-    FaceDetectionListener listener;
-    FaceOptions faceOptions;
-    ImageView imageView;
+    Viola violaFront;
+    Viola violaRear;
+    Bitmap cameraBitmapImageFront, cameraBitmapImageRear ;
+    FaceDetectionListener listenerFront;
+    FaceDetectionListener listenerRear;
+    FaceOptions faceOptionsFront, faceOptionsRear;
+    ImageView imageViewFront, imageViewRear;
+    TextView textViewFront, textViewRear;
+    //ByteBuffer bufferFront, bufferRear;
+    byte[] bytesFront;
+    byte[] bytesRear;
     ImageProcessor imageProcessor =
             new ImageProcessor.Builder()
                     .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.BILINEAR))
@@ -123,16 +130,16 @@ public class FirstFragment extends Fragment {
     private static final int MAX_PREVIEW_HEIGHT = 1080;
     private CameraCharacteristics frontCameraCharacteristics;
     private CameraCharacteristics rearCameraCharacteristics;
-    private Image latestImage;
+    private Image latestImageFront;
+    private Image latestImageRear;
     private Handler handler;
+    Matrix rotationMatrix;
     private static final int BATCH_SIZE = 1;
     private static final int PIXEL_SIZE = 3;
     private static final float THRESHOLD = 0.1f;
 
     private static final int IMAGE_MEAN = 128;
     private static final float IMAGE_STD = 128.0f;
-
-
 
 
     private final ImageReader.OnImageAvailableListener onImageAvailableListenerFront
@@ -142,15 +149,14 @@ public class FirstFragment extends Fragment {
         public void onImageAvailable(ImageReader reader) {
 
             Log.d(TAG, "onImageAvailableListener Called");
-            latestImage = reader.acquireLatestImage();
-            Log.d(TAG, "onImageAvailable: height " + latestImage.getHeight() + " width " + latestImage.getWidth());
-//            Mat mat = imageToMat(latestImage);
-            ByteBuffer buffer = latestImage.getPlanes()[0].getBuffer();
-            byte[] bytes = new byte[buffer.capacity()];
-            buffer.get(bytes);
-            cameraBitmapImage = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
-            viola.detectFace(cameraBitmapImage,faceOptions);
-            latestImage.close();
+            latestImageFront = reader.acquireLatestImage();
+            //Log.d(TAG, "onImageAvailable: height " + latestImageFront.getHeight() + " width " + latestImageFront.getWidth());
+            ByteBuffer bufferFront = latestImageFront.getPlanes()[0].getBuffer();
+            bytesFront = new byte[bufferFront.capacity()];
+            bufferFront.get(bytesFront);
+            cameraBitmapImageFront = BitmapFactory.decodeByteArray(bytesFront, 0, bytesFront.length, null);
+            violaFront.detectFace(cameraBitmapImageFront, faceOptionsFront);
+            latestImageFront.close();
 
         }
     };
@@ -172,12 +178,31 @@ public class FirstFragment extends Fragment {
         return bmpGrayscale;
     }
 
+//    private final ImageReader.OnImageAvailableListener onImageAvailableListenerRear
+//            = new ImageReader.OnImageAvailableListener() {
+//        @Override
+//        public void onImageAvailable(ImageReader reader) {
+//
+//            Log.d(TAG, "onImageAvailableListener Called");
+//        }
+//    };
+
     private final ImageReader.OnImageAvailableListener onImageAvailableListenerRear
             = new ImageReader.OnImageAvailableListener() {
+        @RequiresApi(api = Build.VERSION_CODES.Q)
         @Override
         public void onImageAvailable(ImageReader reader) {
 
-            //Log.d(TAG, "onImageAvailableListener Called");
+            Log.d(TAG, "onImageAvailableListener Rear Called");
+            latestImageRear = reader.acquireLatestImage();
+            //Log.d(TAG, "onImageAvailable: height " + latestImageFront.getHeight() + " width " + latestImageFront.getWidth());
+            ByteBuffer bufferRear = latestImageRear.getPlanes()[0].getBuffer();
+            bytesRear = new byte[bufferRear.capacity()];
+            bufferRear.get(bytesRear);
+            cameraBitmapImageRear = BitmapFactory.decodeByteArray(bytesRear, 0, bytesRear.length, null);
+            violaRear.detectFace(cameraBitmapImageRear, faceOptionsRear);
+            latestImageRear.close();
+
         }
     };
 
@@ -323,23 +348,30 @@ public class FirstFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         textureViewFront = view.findViewById(R.id.texture1);
         textureViewRear = view.findViewById(R.id.texture2);
-        imageView = view.findViewById(R.id.imageview1);
+        imageViewFront = view.findViewById(R.id.imageview1);
+        imageViewRear = view.findViewById(R.id.imageview2);
+        rotationMatrix = new Matrix();
+        rotationMatrix.postRotate(-90);
+        tensorImageRear = new TensorImage(DataType.FLOAT32);
+        tensorImageFront = new TensorImage(DataType.FLOAT32);
+        textViewFront = view.findViewById(R.id.textview1);
+        textViewRear = view.findViewById(R.id.textview2);
 
-        listener= new FaceDetectionListener() {
+        listenerFront = new FaceDetectionListener() {
             @Override
             public void onFaceDetected(@NotNull Result result) {
-                Log.d("onFaceDetected", "FaceCount "+result.getFaceCount());
-                result.getFacePortraits();
+                Log.d("onFaceDetected", "FacePose "+result.getFacePortraits().get(0));
                 Log.d("onFaceDetected", "FaceHeight "+result.getFacePortraits().get(0).getFace().getHeight() + "Width "+result.getFacePortraits().get(0).getFace().getWidth());
-                cameraBitmapImage = toGrayscale(cameraBitmapImage);
-                imageView.setImageBitmap(cameraBitmapImage);
-                myImageDataType = tflite.getInputTensor(0).dataType();
-                tensorImage = new TensorImage(myImageDataType);
-                tensorImage.load(cameraBitmapImage);
-                tensorImage = imageProcessor.process(tensorImage);
-                Log.d(TAG, "bitmap: height " + tensorImage.getHeight());
-                System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImage.getTensorBuffer().getFloatArray()));
-                passImageToTFModel(tensorImage);
+                cameraBitmapImageFront = result.getFacePortraits().get(0).getFace();
+                cameraBitmapImageFront = toGrayscale(cameraBitmapImageFront);
+                cameraBitmapImageFront = Bitmap.createScaledBitmap(cameraBitmapImageFront, cameraBitmapImageFront.getWidth(), cameraBitmapImageFront.getHeight(), true);
+                cameraBitmapImageFront = Bitmap.createBitmap(cameraBitmapImageFront, 0, 0, cameraBitmapImageFront.getWidth(), cameraBitmapImageFront.getHeight(), rotationMatrix, true);
+                imageViewFront.setImageBitmap(cameraBitmapImageFront);
+                tensorImageFront.load(cameraBitmapImageFront);
+                tensorImageFront = imageProcessor.process(tensorImageFront);
+                Log.d(TAG, "bitmap: height " + tensorImageFront.getHeight());
+                System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImageFront.getTensorBuffer().getFloatArray()));
+                passImageToTFModel(tensorImageFront, textViewFront);
                 //latestImage.close();
             }
 
@@ -348,8 +380,41 @@ public class FirstFragment extends Fragment {
                 System.out.println("This is Message"+message);
             }
         };
-        viola = new Viola(listener);
-        faceOptions = new FaceOptions.Builder()
+
+        listenerRear = new FaceDetectionListener() {
+            @Override
+            public void onFaceDetected(@NotNull Result result) {
+                Log.d("onFaceDetected", "FacePose Rear "+result.getFacePortraits().get(0));
+                Log.d("onFaceDetected", "FaceHeight Rear "+result.getFacePortraits().get(0).getFace().getHeight() + "Width "+result.getFacePortraits().get(0).getFace().getWidth());
+                cameraBitmapImageRear = result.getFacePortraits().get(0).getFace();
+                cameraBitmapImageRear = toGrayscale(cameraBitmapImageRear);
+                cameraBitmapImageRear = Bitmap.createScaledBitmap(cameraBitmapImageRear, cameraBitmapImageRear.getWidth(), cameraBitmapImageRear.getHeight(), true);
+                cameraBitmapImageRear = Bitmap.createBitmap(cameraBitmapImageRear, 0, 0, cameraBitmapImageRear.getWidth(), cameraBitmapImageRear.getHeight(), rotationMatrix, true);
+                imageViewRear.setImageBitmap(cameraBitmapImageRear);
+                tensorImageRear.load(cameraBitmapImageRear);
+                tensorImageRear = imageProcessor.process(tensorImageRear);
+                Log.d(TAG, "bitmap: height " + tensorImageRear.getHeight());
+                System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImageRear.getTensorBuffer().getFloatArray()));
+                passImageToTFModel(tensorImageRear,textViewRear);
+                //latestImage.close();
+            }
+
+            @Override
+            public void onFaceDetectionFailed(@NotNull FaceDetectionError error, @NotNull String message) {
+                System.out.println("This is Message"+message);
+            }
+        };
+
+        violaFront = new Viola(listenerFront);
+        violaRear = new Viola(listenerRear);
+
+        faceOptionsFront = new FaceOptions.Builder()
+                .enableProminentFaceDetection()
+                .enableDebug()
+                .cropAlgorithm(CropAlgorithm.SQUARE)
+                .build();
+
+        faceOptionsRear = new FaceOptions.Builder()
                 .enableProminentFaceDetection()
                 .enableDebug()
                 .cropAlgorithm(CropAlgorithm.SQUARE)
@@ -365,7 +430,7 @@ public class FirstFragment extends Fragment {
         }
     }
 
-    private void passImageToTFModel(TensorImage tensorImage)
+    private void passImageToTFModel(TensorImage tensorImage, TextView emotionTextView)
     {
 
         Log.d(String.valueOf(tensorImage.getHeight()),"Height");
@@ -395,7 +460,16 @@ public class FirstFragment extends Fragment {
                 maxIndex = i;
             }
         }
-        Log.d("passImageToTFModel","Emotion " + emotions[maxIndex]);
+        if(emotionTextView.getId() == textViewFront.getId()){
+
+            textViewFront.setText(emotions[maxIndex]);
+            Log.d("passImageToTFModel","Emotion Front " + emotions[maxIndex]);
+        }
+        else{
+            textViewRear.setText(emotions[maxIndex]);
+            Log.d("passImageToTFModel","Emotion Rear " + emotions[maxIndex]);
+        }
+
     }
 
     private MappedByteBuffer loadModelFile() throws IOException {
@@ -899,6 +973,7 @@ public class FirstFragment extends Fragment {
 
                                 //Set fps range from 1 to 5
                                 Range<Integer> fpsRange = new Range<>(1,1);
+                                //previewRequestBuilderFront.set(CaptureRequest.JPEG_ORIENTATION, 180);
 
                                 previewRequestBuilderFront.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fpsRange);
 
@@ -941,8 +1016,15 @@ public class FirstFragment extends Fragment {
             Surface surface = new Surface(texture);
 
             // We set up a CaptureRequest.Builder with the output Surface.
+//            previewRequestBuilderRear
+//                    = cameraDeviceRear.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+//            previewRequestBuilderRear.addTarget(surface);
+
             previewRequestBuilderRear
-                    = cameraDeviceRear.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+                    = cameraDeviceRear.createCaptureRequest(CameraDevice.TEMPLATE_VIDEO_SNAPSHOT);
+            previewRequestBuilderRear.set (CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+            previewRequestBuilderRear.set (CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
+            previewRequestBuilderRear.addTarget (imageReaderRear.getSurface ());
             previewRequestBuilderRear.addTarget(surface);
 
             // Here, we create a CameraCaptureSession for camera preview.
@@ -964,7 +1046,7 @@ public class FirstFragment extends Fragment {
                                         CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
                                 // Flash is automatically enabled when necessary.
 
-                                Range<Integer> fpsRange = new Range<>(1,5);
+                                Range<Integer> fpsRange = new Range<>(1,1);
 
                                 previewRequestBuilderRear.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fpsRange);
                                 // Finally, we start displaying the camera preview.
