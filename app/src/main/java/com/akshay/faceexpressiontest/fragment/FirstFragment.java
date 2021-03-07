@@ -32,17 +32,14 @@ import androidx.core.content.ContextCompat;
 import com.akshay.faceexpressiontest.R;
 import com.akshay.faceexpressiontest.dependency.AutoFitTextureView;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.widget.ImageView;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.Arrays;
@@ -51,13 +48,12 @@ import java.util.concurrent.TimeUnit;
 import com.akshay.faceexpressiontest.util.CompareSizesByViewAspectRatio;
 import com.darwin.viola.still.FaceDetectionListener;
 import com.darwin.viola.still.Viola;
+import com.darwin.viola.still.model.CropAlgorithm;
 import com.darwin.viola.still.model.FaceDetectionError;
 import com.darwin.viola.still.model.FaceOptions;
 import com.darwin.viola.still.model.Result;
-import com.quickbirdstudios.yuv2mat.Yuv;
 
 import org.jetbrains.annotations.NotNull;
-import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
@@ -77,6 +73,12 @@ public class FirstFragment extends Fragment {
     private TensorFlowInferenceInterface inferenceInterface;
     private Interpreter tflite;
     TensorImage tensorImage;
+    DataType myImageDataType;
+    Viola viola;
+    Bitmap cameraBitmapImage;
+    FaceDetectionListener listener;
+    FaceOptions faceOptions;
+    ImageView imageView;
     ImageProcessor imageProcessor =
             new ImageProcessor.Builder()
                     .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.BILINEAR))
@@ -146,40 +148,10 @@ public class FirstFragment extends Fragment {
             ByteBuffer buffer = latestImage.getPlanes()[0].getBuffer();
             byte[] bytes = new byte[buffer.capacity()];
             buffer.get(bytes);
-            Bitmap bitmapImage = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
-            bitmapImage = toGrayscale(bitmapImage);
-            System.out.println("Space"+bitmapImage.getColorSpace());
-            System.out.println("This is Bitmap Pixel"+bitmapImage.getColor(20,20));
-
-            final FaceDetectionListener listener = new FaceDetectionListener() {
-                @Override
-                public void onFaceDetected(@NotNull Result result) {
-                    System.out.println("Face Count"+result.getFaceCount());
-                    result.getFacePortraits();
-                    System.out.println(result.getFacePortraits().get(0));
-                }
-
-                @Override
-                public void onFaceDetectionFailed(@NotNull FaceDetectionError error, @NotNull String message) {
-                    System.out.println("This is Message"+message);
-                }
-            };
-            Viola viola = new Viola(listener);
-            FaceOptions faceOptions = new FaceOptions.Builder()
-                    .enableProminentFaceDetection()
-                    .enableDebug()
-                    .build();
-            viola.detectFace(bitmapImage,faceOptions);
-
-            System.out.println("Min Face Size"+faceOptions.getMinimumFaceSize());
-            DataType myImageDataType = tflite.getInputTensor(0).dataType();
-            tensorImage = new TensorImage(myImageDataType);
-            tensorImage.load(bitmapImage);
-            tensorImage = imageProcessor.process(tensorImage);
-            Log.d(TAG, "bitmap: height " + tensorImage.getHeight());
-            System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImage.getTensorBuffer().getFloatArray()));
-            passImageToTFModel(tensorImage);
+            cameraBitmapImage = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
+            viola.detectFace(cameraBitmapImage,faceOptions);
             latestImage.close();
+
         }
     };
 
@@ -351,6 +323,37 @@ public class FirstFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         textureViewFront = view.findViewById(R.id.texture1);
         textureViewRear = view.findViewById(R.id.texture2);
+        imageView = view.findViewById(R.id.imageview1);
+
+        listener= new FaceDetectionListener() {
+            @Override
+            public void onFaceDetected(@NotNull Result result) {
+                Log.d("onFaceDetected", "FaceCount "+result.getFaceCount());
+                result.getFacePortraits();
+                Log.d("onFaceDetected", "FaceHeight "+result.getFacePortraits().get(0).getFace().getHeight() + "Width "+result.getFacePortraits().get(0).getFace().getWidth());
+                cameraBitmapImage = toGrayscale(cameraBitmapImage);
+                imageView.setImageBitmap(cameraBitmapImage);
+                myImageDataType = tflite.getInputTensor(0).dataType();
+                tensorImage = new TensorImage(myImageDataType);
+                tensorImage.load(cameraBitmapImage);
+                tensorImage = imageProcessor.process(tensorImage);
+                Log.d(TAG, "bitmap: height " + tensorImage.getHeight());
+                System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImage.getTensorBuffer().getFloatArray()));
+                passImageToTFModel(tensorImage);
+                //latestImage.close();
+            }
+
+            @Override
+            public void onFaceDetectionFailed(@NotNull FaceDetectionError error, @NotNull String message) {
+                System.out.println("This is Message"+message);
+            }
+        };
+        viola = new Viola(listener);
+        faceOptions = new FaceOptions.Builder()
+                .enableProminentFaceDetection()
+                .enableDebug()
+                .cropAlgorithm(CropAlgorithm.SQUARE)
+                .build();
 
         try {
             tflite = new Interpreter(loadModelFile());
@@ -392,8 +395,7 @@ public class FirstFragment extends Fragment {
                 maxIndex = i;
             }
         }
-        System.out.println("Prediction Class\t" + emotions[maxIndex]);
-
+        Log.d("passImageToTFModel","Emotion " + emotions[maxIndex]);
     }
 
     private MappedByteBuffer loadModelFile() throws IOException {
