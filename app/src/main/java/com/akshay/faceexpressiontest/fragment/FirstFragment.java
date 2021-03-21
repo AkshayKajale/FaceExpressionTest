@@ -53,7 +53,6 @@ import com.darwin.viola.still.model.CropAlgorithm;
 import com.darwin.viola.still.model.FaceDetectionError;
 import com.darwin.viola.still.model.FaceOptions;
 import com.darwin.viola.still.model.Result;
-
 import org.jetbrains.annotations.NotNull;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -74,7 +73,6 @@ public class FirstFragment extends Fragment {
     private TensorFlowInferenceInterface inferenceInterface;
     private Interpreter tflite;
     TensorImage tensorImageFront, tensorImageRear;
-    DataType myImageDataType;
     Viola violaFront;
     Viola violaRear;
     Bitmap cameraBitmapImageFront, cameraBitmapImageRear ;
@@ -83,7 +81,7 @@ public class FirstFragment extends Fragment {
     FaceOptions faceOptionsFront, faceOptionsRear;
     ImageView imageViewFront, imageViewRear;
     TextView textViewFront, textViewRear;
-    //ByteBuffer bufferFront, bufferRear;
+    ByteBuffer bufferFront, bufferRear;
     byte[] bytesFront;
     byte[] bytesRear;
     ImageProcessor imageProcessor =
@@ -130,9 +128,7 @@ public class FirstFragment extends Fragment {
     private static final int MAX_PREVIEW_HEIGHT = 1080;
     private CameraCharacteristics frontCameraCharacteristics;
     private CameraCharacteristics rearCameraCharacteristics;
-    private Image latestImageFront;
-    private Image latestImageRear;
-    private Handler handler;
+    private Image latestImageFront,latestImageRear;
     Matrix rotationMatrix;
     private static final int BATCH_SIZE = 1;
     private static final int PIXEL_SIZE = 3;
@@ -148,10 +144,10 @@ public class FirstFragment extends Fragment {
         @Override
         public void onImageAvailable(ImageReader reader) {
 
-            Log.d(TAG, "onImageAvailableListener Called");
+            Log.d(TAG, "onImageAvailableListener Front Called");
             latestImageFront = reader.acquireLatestImage();
             //Log.d(TAG, "onImageAvailable: height " + latestImageFront.getHeight() + " width " + latestImageFront.getWidth());
-            ByteBuffer bufferFront = latestImageFront.getPlanes()[0].getBuffer();
+            bufferFront = latestImageFront.getPlanes()[0].getBuffer();
             bytesFront = new byte[bufferFront.capacity()];
             bufferFront.get(bytesFront);
             cameraBitmapImageFront = BitmapFactory.decodeByteArray(bytesFront, 0, bytesFront.length, null);
@@ -196,11 +192,11 @@ public class FirstFragment extends Fragment {
             Log.d(TAG, "onImageAvailableListener Rear Called");
             latestImageRear = reader.acquireLatestImage();
             //Log.d(TAG, "onImageAvailable: height " + latestImageFront.getHeight() + " width " + latestImageFront.getWidth());
-            ByteBuffer bufferRear = latestImageRear.getPlanes()[0].getBuffer();
+            bufferRear = latestImageRear.getPlanes()[0].getBuffer();
             bytesRear = new byte[bufferRear.capacity()];
             bufferRear.get(bytesRear);
             cameraBitmapImageRear = BitmapFactory.decodeByteArray(bytesRear, 0, bytesRear.length, null);
-            violaRear.detectFace(cameraBitmapImageRear, faceOptionsRear);
+//            violaRear.detectFace(cameraBitmapImageRear, faceOptionsRear);
             latestImageRear.close();
 
         }
@@ -311,14 +307,14 @@ public class FirstFragment extends Fragment {
         @Override
         public void onOpened(@NonNull CameraDevice cameraDevice) {
             // This method is called when the camera is opened. We start camera preview here.
-            cameraOpenCloseLockFront.release();
+            cameraOpenCloseLockRear.release();
             cameraDeviceRear = cameraDevice;
             createCameraPreviewSessionRear();
         }
 
         @Override
         public void onDisconnected(@NonNull CameraDevice cameraDevice) {
-            cameraOpenCloseLockFront.release();
+            cameraOpenCloseLockRear.release();
             cameraDevice.close();
             cameraDeviceRear = null;
         }
@@ -366,7 +362,7 @@ public class FirstFragment extends Fragment {
                 cameraBitmapImageFront = toGrayscale(cameraBitmapImageFront);
                 cameraBitmapImageFront = Bitmap.createScaledBitmap(cameraBitmapImageFront, cameraBitmapImageFront.getWidth(), cameraBitmapImageFront.getHeight(), true);
                 cameraBitmapImageFront = Bitmap.createBitmap(cameraBitmapImageFront, 0, 0, cameraBitmapImageFront.getWidth(), cameraBitmapImageFront.getHeight(), rotationMatrix, true);
-                imageViewFront.setImageBitmap(cameraBitmapImageFront);
+                //imageViewFront.setImageBitmap(cameraBitmapImageFront);
                 tensorImageFront.load(cameraBitmapImageFront);
                 tensorImageFront = imageProcessor.process(tensorImageFront);
                 Log.d(TAG, "bitmap: height " + tensorImageFront.getHeight());
@@ -513,9 +509,9 @@ public class FirstFragment extends Fragment {
     {
         if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
-        requestCameraPermission();
-        return;
-    }
+            requestCameraPermission();
+            return;
+        }
         setUpCameraOutputsFront(width, height);
         configureTransformFront(width, height);
         Activity activity = getActivity();
@@ -526,7 +522,7 @@ public class FirstFragment extends Fragment {
             if (!cameraOpenCloseLockFront.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
                 throw new RuntimeException("Time out waiting to lock camera opening.");
             }
-            manager.openCamera(cameraIdFront, stateCallbackFront, backgroundHandlerRear);
+            manager.openCamera(cameraIdFront, stateCallbackFront, backgroundHandlerFront);
         }
         catch (CameraAccessException e) {
             e.printStackTrace();
@@ -642,7 +638,7 @@ public class FirstFragment extends Fragment {
 
         }
         catch (CameraAccessException e) {
-            
+
             Log.e(TAG, e.toString());
         }
         catch(NullPointerException e) {
@@ -690,7 +686,7 @@ public class FirstFragment extends Fragment {
             captureSessionRear.close();
             captureSessionRear = null;
             cameraDeviceRear.close();
-            cameraDeviceFront = null;
+            cameraDeviceRear = null;
             imageReaderRear.close();
             imageReaderRear = null;
         }
@@ -781,7 +777,7 @@ public class FirstFragment extends Fragment {
         }
         catch(NullPointerException e) {
 
-           ErrorDialog.newInstance("This device doesn't support camera2 API").show(getChildFragmentManager(),FRAGMENT_DIALOG);
+            ErrorDialog.newInstance("This device doesn't support camera2 API").show(getChildFragmentManager(),FRAGMENT_DIALOG);
         }
     }
 
@@ -863,7 +859,7 @@ public class FirstFragment extends Fragment {
                     swappedDimensions = true;
                 }
 
-             default:
+            default:
                 Log.e(TAG, "Display rotation is invalid: $displayRotation");
         }
 
@@ -991,7 +987,7 @@ public class FirstFragment extends Fragment {
                         @Override
                         public void onConfigureFailed(
                                 @NonNull CameraCaptureSession cameraCaptureSession) {
-                           Log.d(TAG, "CaptureSession Failed");
+                            Log.d(TAG, "CaptureSession Failed");
                         }
                     }, null
             );
@@ -1168,53 +1164,4 @@ public class FirstFragment extends Fragment {
         return fragment;
     }
 
-    public static Mat imageToMat(Image image) {
-        ByteBuffer buffer;
-        int rowStride;
-        int pixelStride;
-        int width = image.getWidth();
-        int height = image.getHeight();
-        int offset = 0;
-
-        Image.Plane[] planes = image.getPlanes();
-        byte[] data = new byte[image.getWidth() * image.getHeight() * ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8];
-        byte[] rowData = new byte[planes[0].getRowStride()];
-
-        for (int i = 0; i < planes.length; i++) {
-            buffer = planes[i].getBuffer();
-            rowStride = planes[i].getRowStride();
-            pixelStride = planes[i].getPixelStride();
-            int w = (i == 0) ? width : width / 2;
-            int h = (i == 0) ? height : height / 2;
-            for (int row = 0; row < h; row++) {
-                int bytesPerPixel = ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8;
-                if (pixelStride == bytesPerPixel) {
-                    int length = w * bytesPerPixel;
-                    buffer.get(data, offset, length);
-
-                    if (h - row != 1) {
-                        buffer.position(buffer.position() + rowStride - length);
-                    }
-                    offset += length;
-                } else {
-
-
-                    if (h - row == 1) {
-                        buffer.get(rowData, 0, width - pixelStride + 1);
-                    } else {
-                        buffer.get(rowData, 0, rowStride);
-                    }
-
-                    for (int col = 0; col < w; col++) {
-                        data[offset++] = rowData[col * pixelStride];
-                    }
-                }
-            }
-        }
-
-        Mat mat = new Mat(height + height / 2, width, CvType.CV_8UC1);
-        mat.put(0, 0, data);
-
-        return mat;
-    }
 }
