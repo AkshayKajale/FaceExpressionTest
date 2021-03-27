@@ -90,7 +90,7 @@ public class FirstFragment extends Fragment {
                     .build();
 
 
-    private String emotions[] = {"Angry", "Disgust","fear","surprise","Sad","Happy", "Neutral"};
+    private String emotions[] = {"Angry", "Disgust","Fear","Surprise","Sad","Happy", "Neutral"};
 
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -151,11 +151,19 @@ public class FirstFragment extends Fragment {
             bytesFront = new byte[bufferFront.capacity()];
             bufferFront.get(bytesFront);
             cameraBitmapImageFront = BitmapFactory.decodeByteArray(bytesFront, 0, bytesFront.length, null);
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             violaFront.detectFace(cameraBitmapImageFront, faceOptionsFront);
             latestImageFront.close();
 
         }
     };
+
+
+
 
     public Bitmap toGrayscale(Bitmap bmpOriginal)
     {
@@ -174,15 +182,6 @@ public class FirstFragment extends Fragment {
         return bmpGrayscale;
     }
 
-//    private final ImageReader.OnImageAvailableListener onImageAvailableListenerRear
-//            = new ImageReader.OnImageAvailableListener() {
-//        @Override
-//        public void onImageAvailable(ImageReader reader) {
-//
-//            Log.d(TAG, "onImageAvailableListener Called");
-//        }
-//    };
-
     private final ImageReader.OnImageAvailableListener onImageAvailableListenerRear
             = new ImageReader.OnImageAvailableListener() {
         @RequiresApi(api = Build.VERSION_CODES.Q)
@@ -196,7 +195,12 @@ public class FirstFragment extends Fragment {
             bytesRear = new byte[bufferRear.capacity()];
             bufferRear.get(bytesRear);
             cameraBitmapImageRear = BitmapFactory.decodeByteArray(bytesRear, 0, bytesRear.length, null);
-//            violaRear.detectFace(cameraBitmapImageRear, faceOptionsRear);
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            violaRear.detectFace(cameraBitmapImageRear, faceOptionsRear);
             latestImageRear.close();
 
         }
@@ -362,7 +366,6 @@ public class FirstFragment extends Fragment {
                 cameraBitmapImageFront = toGrayscale(cameraBitmapImageFront);
                 cameraBitmapImageFront = Bitmap.createScaledBitmap(cameraBitmapImageFront, cameraBitmapImageFront.getWidth(), cameraBitmapImageFront.getHeight(), true);
                 cameraBitmapImageFront = Bitmap.createBitmap(cameraBitmapImageFront, 0, 0, cameraBitmapImageFront.getWidth(), cameraBitmapImageFront.getHeight(), rotationMatrix, true);
-                //imageViewFront.setImageBitmap(cameraBitmapImageFront);
                 tensorImageFront.load(cameraBitmapImageFront);
                 tensorImageFront = imageProcessor.process(tensorImageFront);
                 Log.d(TAG, "bitmap: height " + tensorImageFront.getHeight());
@@ -386,7 +389,6 @@ public class FirstFragment extends Fragment {
                 cameraBitmapImageRear = toGrayscale(cameraBitmapImageRear);
                 cameraBitmapImageRear = Bitmap.createScaledBitmap(cameraBitmapImageRear, cameraBitmapImageRear.getWidth(), cameraBitmapImageRear.getHeight(), true);
                 cameraBitmapImageRear = Bitmap.createBitmap(cameraBitmapImageRear, 0, 0, cameraBitmapImageRear.getWidth(), cameraBitmapImageRear.getHeight(), rotationMatrix, true);
-                imageViewRear.setImageBitmap(cameraBitmapImageRear);
                 tensorImageRear.load(cameraBitmapImageRear);
                 tensorImageRear = imageProcessor.process(tensorImageRear);
                 Log.d(TAG, "bitmap: height " + tensorImageRear.getHeight());
