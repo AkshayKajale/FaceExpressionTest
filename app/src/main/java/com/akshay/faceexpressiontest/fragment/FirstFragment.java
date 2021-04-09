@@ -471,7 +471,7 @@ public class FirstFragment extends Fragment {
     }
 
     private MappedByteBuffer loadModelFile() throws IOException {
-        AssetFileDescriptor fileDescriptor=getContext().getAssets().openFd("sequential.tflite");
+        AssetFileDescriptor fileDescriptor=getContext().getAssets().openFd("depth_wise.tflite");
         FileInputStream inputStream=new FileInputStream(fileDescriptor.getFileDescriptor());
         FileChannel fileChannel=inputStream.getChannel();
         long startOffset=fileDescriptor.getStartOffset();
