@@ -39,6 +39,13 @@
                 android:text="EmotionFront"
                 android:textColor="@color/colorWhite"/>
 
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/startButton"
+                android:text="Start"
+                />
+
         </LinearLayout>
 
         <LinearLayout
@@ -54,6 +61,13 @@
                 android:layout_height="wrap_content"
                 android:text="EmotionRear"
                 android:textColor="@color/colorWhite"/>
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/stopButton"
+                android:text="Stop"
+                />
 
         </LinearLayout>
     </LinearLayout>

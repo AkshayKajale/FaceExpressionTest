@@ -9,6 +9,7 @@ import android.media.AudioFormat;
 import android.media.Image;
 import android.media.MediaRecorder;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Range;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -34,9 +35,11 @@ import androidx.core.content.ContextCompat;
 import com.akshay.faceexpressiontest.R;
 import com.akshay.faceexpressiontest.dependency.AutoFitTextureView;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -78,6 +81,7 @@ public class FirstFragment extends Fragment {
     TensorImage tensorImageFront, tensorImageRear;
     Viola violaFront;
     Viola violaRear;
+    Button buttonStart, buttonStop;
     Bitmap cameraBitmapImageFront, cameraBitmapImageRear ;
     FaceDetectionListener listenerFront;
     FaceDetectionListener listenerRear;
@@ -87,6 +91,7 @@ public class FirstFragment extends Fragment {
     ByteBuffer bufferFront, bufferRear;
     byte[] bytesFront;
     byte[] bytesRear;
+    AudioRecorder audioRecorder;
     ImageProcessor imageProcessor =
             new ImageProcessor.Builder()
                     .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.BILINEAR))
@@ -351,6 +356,33 @@ public class FirstFragment extends Fragment {
         tensorImageFront = new TensorImage(DataType.FLOAT32);
         textViewFront = view.findViewById(R.id.textview1);
         textViewRear = view.findViewById(R.id.textview2);
+        buttonStart = view.findViewById(R.id.startButton);
+        buttonStop = view.findViewById(R.id.stopButton);
+        audioRecorder = new AudioRecorder("audiofile");
+
+        buttonStart.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    audioRecorder.start();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        buttonStop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                try {
+                    audioRecorder.stop();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        });
 
         listenerFront = new FaceDetectionListener() {
             @Override
@@ -1155,6 +1187,63 @@ public class FirstFragment extends Fragment {
                     .create();
         }
     }
+
+    public class AudioRecorder {
+
+        final MediaRecorder recorder = new MediaRecorder();
+        final String path;
+
+        /**
+         * Creates a new audio recording at the given path (relative to root of SD card).
+         */
+        public AudioRecorder(String path) {
+            this.path = sanitizePath(path);
+        }
+
+        private String sanitizePath(String path) {
+            if (!path.startsWith("/")) {
+                path = "/" + path;
+            }
+            if (!path.contains(".")) {
+                path += ".3gp";
+            }
+            return Environment.getExternalStorageDirectory().getAbsolutePath() + path;
+        }
+
+        /**
+         * Starts a new recording.
+         */
+
+        public void start() throws IOException {
+            String state = android.os.Environment.getExternalStorageState();
+            if(!state.equals(android.os.Environment.MEDIA_MOUNTED))  {
+                throw new IOException("SD Card is not mounted.  It is " + state + ".");
+            }
+
+            // make sure the directory we plan to store the recording in exists
+            File directory = new File(path).getParentFile();
+            if (!directory.exists() && !directory.mkdirs()) {
+                throw new IOException("Path to file could not be created.");
+            }
+
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+            recorder.setOutputFile(path);
+            recorder.prepare();
+            recorder.start();
+        }
+
+        /**
+         * Stops a recording that has been previously started.
+         */
+        public void stop() throws IOException {
+            recorder.stop();
+            recorder.release();
+        }
+
+    }
+
 
     public static FirstFragment getFragment() {
         FirstFragment fragment = new FirstFragment();

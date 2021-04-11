@@ -49,6 +49,7 @@ dependencies {
     implementation 'org.tensorflow:tensorflow-lite-gpu:2.2.0'
     implementation 'org.tensorflow:tensorflow-android:1.13.1'
     implementation 'org.jetbrains:annotations:15.0'
+    implementation files('../libs/jlibrosa-1.1.8-SNAPSHOT-jar-with-dependencies.jar')
 //    implementation project(path: ':sdk')
     testImplementation 'junit:junit:4.13.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
