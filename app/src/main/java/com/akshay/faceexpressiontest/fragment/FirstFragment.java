@@ -5,7 +5,9 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.res.AssetFileDescriptor;
+import android.media.AudioFormat;
 import android.media.Image;
+import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.util.Range;
 import android.view.LayoutInflater;
@@ -64,6 +66,7 @@ import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.support.image.ops.ResizeOp;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
+
 public class FirstFragment extends Fragment {
 
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
@@ -79,7 +82,7 @@ public class FirstFragment extends Fragment {
     FaceDetectionListener listenerFront;
     FaceDetectionListener listenerRear;
     FaceOptions faceOptionsFront, faceOptionsRear;
-    ImageView imageViewFront, imageViewRear;
+    private MediaRecorder recorder = null;
     TextView textViewFront, textViewRear;
     ByteBuffer bufferFront, bufferRear;
     byte[] bytesFront;
@@ -130,12 +133,7 @@ public class FirstFragment extends Fragment {
     private CameraCharacteristics rearCameraCharacteristics;
     private Image latestImageFront,latestImageRear;
     Matrix rotationMatrix;
-    private static final int BATCH_SIZE = 1;
-    private static final int PIXEL_SIZE = 3;
-    private static final float THRESHOLD = 0.1f;
 
-    private static final int IMAGE_MEAN = 128;
-    private static final float IMAGE_STD = 128.0f;
 
 
     private final ImageReader.OnImageAvailableListener onImageAvailableListenerFront
@@ -143,6 +141,7 @@ public class FirstFragment extends Fragment {
         @RequiresApi(api = Build.VERSION_CODES.Q)
         @Override
         public void onImageAvailable(ImageReader reader) {
+
 
             Log.d(TAG, "onImageAvailableListener Front Called");
             latestImageFront = reader.acquireLatestImage();
@@ -161,8 +160,6 @@ public class FirstFragment extends Fragment {
 
         }
     };
-
-
 
 
     public Bitmap toGrayscale(Bitmap bmpOriginal)
@@ -348,8 +345,6 @@ public class FirstFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         textureViewFront = view.findViewById(R.id.texture1);
         textureViewRear = view.findViewById(R.id.texture2);
-        imageViewFront = view.findViewById(R.id.imageview1);
-        imageViewRear = view.findViewById(R.id.imageview2);
         rotationMatrix = new Matrix();
         rotationMatrix.postRotate(-90);
         tensorImageRear = new TensorImage(DataType.FLOAT32);
@@ -369,7 +364,7 @@ public class FirstFragment extends Fragment {
                 tensorImageFront.load(cameraBitmapImageFront);
                 tensorImageFront = imageProcessor.process(tensorImageFront);
                 Log.d(TAG, "bitmap: height " + tensorImageFront.getHeight());
-                System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImageFront.getTensorBuffer().getFloatArray()));
+                //System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImageFront.getTensorBuffer().getFloatArray()));
                 passImageToTFModel(tensorImageFront, textViewFront);
                 //latestImage.close();
             }
@@ -392,7 +387,7 @@ public class FirstFragment extends Fragment {
                 tensorImageRear.load(cameraBitmapImageRear);
                 tensorImageRear = imageProcessor.process(tensorImageRear);
                 Log.d(TAG, "bitmap: height " + tensorImageRear.getHeight());
-                System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImageRear.getTensorBuffer().getFloatArray()));
+                //System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImageRear.getTensorBuffer().getFloatArray()));
                 passImageToTFModel(tensorImageRear,textViewRear);
                 //latestImage.close();
             }

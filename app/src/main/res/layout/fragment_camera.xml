@@ -3,7 +3,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:weightSum="3">
+    android:weightSum="2">
 
     <com.akshay.faceexpressiontest.dependency.AutoFitTextureView
         android:layout_weight="1"
@@ -21,29 +21,21 @@
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="wrap_content"
         android:weightSum="2"
-        android:layout_weight="1">
+        >
 
         <LinearLayout
             android:orientation="vertical"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:weightSum="2"
             android:layout_weight="1">
 
 
-    <ImageView
-        android:layout_weight="1.7"
-        android:id="@+id/imageview1"
-        android:layout_width="match_parent"
-        android:layout_height="0dp" />
-
             <TextView
-                android:layout_weight="0.3"
                 android:id="@+id/textview1"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
+                android:layout_height="wrap_content"
                 android:text="EmotionFront"
                 android:textColor="@color/colorWhite"/>
 
@@ -53,20 +45,13 @@
             android:orientation="vertical"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:weightSum="2"
             android:layout_weight="1">
 
-        <ImageView
-            android:layout_weight="1.7"
-            android:id="@+id/imageview2"
-            android:layout_width="match_parent"
-            android:layout_height="0dp" />
-
             <TextView
-                android:layout_weight="0.3"
+
                 android:id="@+id/textview2"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
+                android:layout_height="wrap_content"
                 android:text="EmotionRear"
                 android:textColor="@color/colorWhite"/>
 
