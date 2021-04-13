@@ -36,9 +36,7 @@ import com.akshay.faceexpressiontest.R;
 import com.akshay.faceexpressiontest.dependency.AutoFitTextureView;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.TextView;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -59,8 +57,6 @@ import com.darwin.viola.still.model.FaceDetectionError;
 import com.darwin.viola.still.model.FaceOptions;
 import com.darwin.viola.still.model.Result;
 import org.jetbrains.annotations.NotNull;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
@@ -1205,7 +1201,7 @@ public class FirstFragment extends Fragment {
                 path = "/" + path;
             }
             if (!path.contains(".")) {
-                path += ".3gp";
+                path += ".wav";
             }
             return Environment.getExternalStorageDirectory().getAbsolutePath() + path;
         }
@@ -1227,7 +1223,7 @@ public class FirstFragment extends Fragment {
             }
 
             recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+            recorder.setOutputFormat(AudioFormat.ENCODING_PCM_16BIT);
             recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
             recorder.setOutputFile(path);
             recorder.prepare();
@@ -1243,7 +1239,6 @@ public class FirstFragment extends Fragment {
         }
 
     }
-
 
     public static FirstFragment getFragment() {
         FirstFragment fragment = new FirstFragment();
