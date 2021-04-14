@@ -58,4 +58,5 @@ dependencies {
     implementation 'com.darwin.viola:still:1.0.1'
     implementation 'com.quickbirdstudios:opencv:4.3.0'
     implementation "com.quickbirdstudios:yuvtomat:1.1.0"
+    implementation 'com.github.shaoshuai904:RecordWav:1.0.3'
 }

@@ -5,9 +5,7 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.res.AssetFileDescriptor;
-import android.media.AudioFormat;
 import android.media.Image;
-import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Range;
@@ -56,6 +54,12 @@ import com.darwin.viola.still.model.CropAlgorithm;
 import com.darwin.viola.still.model.FaceDetectionError;
 import com.darwin.viola.still.model.FaceOptions;
 import com.darwin.viola.still.model.Result;
+import com.jlibrosa.audio.wavFile.WavFileException;
+import com.maple.recorder.recording.AudioChunk;
+import com.maple.recorder.recording.AudioRecordConfig;
+import com.maple.recorder.recording.MsRecorder;
+import com.maple.recorder.recording.PullTransport;
+import com.maple.recorder.recording.Recorder;
 import org.jetbrains.annotations.NotNull;
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 import org.tensorflow.lite.DataType;
@@ -82,12 +86,12 @@ public class FirstFragment extends Fragment {
     FaceDetectionListener listenerFront;
     FaceDetectionListener listenerRear;
     FaceOptions faceOptionsFront, faceOptionsRear;
-    private MediaRecorder recorder = null;
     TextView textViewFront, textViewRear;
     ByteBuffer bufferFront, bufferRear;
     byte[] bytesFront;
     byte[] bytesRear;
-    AudioRecorder audioRecorder;
+    JLibrosaTest jLibrosaTest;
+    Recorder recorder;
     ImageProcessor imageProcessor =
             new ImageProcessor.Builder()
                     .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.BILINEAR))
@@ -354,16 +358,26 @@ public class FirstFragment extends Fragment {
         textViewRear = view.findViewById(R.id.textview2);
         buttonStart = view.findViewById(R.id.startButton);
         buttonStop = view.findViewById(R.id.stopButton);
-        audioRecorder = new AudioRecorder("audiofile");
+        jLibrosaTest = new JLibrosaTest();
+        Log.d("TAG","Path "+Environment.getExternalStorageDirectory().getAbsolutePath()+"/");
+
+        recorder = MsRecorder.wav(
+                new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/temp.wav"),
+                new AudioRecordConfig(),
+                new PullTransport.Default()
+                        .setOnAudioChunkPulledListener(new PullTransport.OnAudioChunkPulledListener() {
+                            @Override
+                            public void onAudioChunkPulled(AudioChunk audioChunk) {
+                                Log.e("TAG", "amplitude: " + audioChunk.maxAmplitude());
+                            }
+                        })
+
+        );
 
         buttonStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                try {
-                    audioRecorder.start();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                recorder.startRecording();
             }
         });
 
@@ -371,12 +385,14 @@ public class FirstFragment extends Fragment {
             @Override
             public void onClick(View v) {
 
+                recorder.stopRecording();
                 try {
-                    audioRecorder.stop();
+                    jLibrosaTest.getMfcc();
                 } catch (IOException e) {
                     e.printStackTrace();
+                } catch (WavFileException e) {
+                    e.printStackTrace();
                 }
-
             }
         });
 
@@ -1182,62 +1198,6 @@ public class FirstFragment extends Fragment {
                             })
                     .create();
         }
-    }
-
-    public class AudioRecorder {
-
-        final MediaRecorder recorder = new MediaRecorder();
-        final String path;
-
-        /**
-         * Creates a new audio recording at the given path (relative to root of SD card).
-         */
-        public AudioRecorder(String path) {
-            this.path = sanitizePath(path);
-        }
-
-        private String sanitizePath(String path) {
-            if (!path.startsWith("/")) {
-                path = "/" + path;
-            }
-            if (!path.contains(".")) {
-                path += ".wav";
-            }
-            return Environment.getExternalStorageDirectory().getAbsolutePath() + path;
-        }
-
-        /**
-         * Starts a new recording.
-         */
-
-        public void start() throws IOException {
-            String state = android.os.Environment.getExternalStorageState();
-            if(!state.equals(android.os.Environment.MEDIA_MOUNTED))  {
-                throw new IOException("SD Card is not mounted.  It is " + state + ".");
-            }
-
-            // make sure the directory we plan to store the recording in exists
-            File directory = new File(path).getParentFile();
-            if (!directory.exists() && !directory.mkdirs()) {
-                throw new IOException("Path to file could not be created.");
-            }
-
-            recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            recorder.setOutputFormat(AudioFormat.ENCODING_PCM_16BIT);
-            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-            recorder.setOutputFile(path);
-            recorder.prepare();
-            recorder.start();
-        }
-
-        /**
-         * Stops a recording that has been previously started.
-         */
-        public void stop() throws IOException {
-            recorder.stop();
-            recorder.release();
-        }
-
     }
 
     public static FirstFragment getFragment() {
