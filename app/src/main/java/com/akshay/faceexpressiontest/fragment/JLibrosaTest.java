@@ -32,12 +32,12 @@ public class JLibrosaTest {
             mSampleRate = (int) wavFile.getSampleRate();
             mChannels = wavFile.getNumChannels();
 
-            float[][] buffer = new float[mChannels][mNumFrames];
-            int frameOffset = 0;
-            int loopCounter = ((mNumFrames * mChannels)/4096) + 1;
-            for (int i = 0; i < loopCounter; i++) {
-                frameOffset = (int)wavFile.readFrames(buffer, mNumFrames, frameOffset);
-            }
+            double[][] buffer = new double[mChannels][mNumFrames];
+//            int frameOffset = 0;
+//            int loopCounter = ((mNumFrames * mChannels)/4096) + 1;
+//            for (int i = 0; i < loopCounter; i++) {
+//                frameOffset = (int)wavFile.readFrames(buffer, mNumFrames, frameOffset);
+//            }
 
 
             DecimalFormat df = new DecimalFormat("#.#####");
