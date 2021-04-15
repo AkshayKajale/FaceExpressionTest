@@ -8,14 +8,14 @@ import java.io.IOException;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.Arrays;
-
+import android.content.Context;
 import com.jlibrosa.audio.wavFile.WavFileException;
 import com.jlibrosa.audio.wavFile.WavFile;
 import com.jlibrosa.audio.JLibrosa;
 
 public class JLibrosaTest {
 
-	public void getMfcc() throws IOException, WavFileException {
+	public float[] getMfcc() throws IOException, WavFileException {
 		// TODO Auto-generated method stub
 
 		int mNumFrames;
@@ -86,9 +86,8 @@ public class JLibrosaTest {
                 meanMFCCValues[p] = (float) fftMeanValAcrossRow;
             }
 
-            Log.d("TAG","Mean MFCC Values "+ Arrays.toString(meanMFCCValues));
-
-
+            Log.d("TAG","Mean MFCC Values: "+ Arrays.toString(meanMFCCValues));
+            return meanMFCCValues;
 
 	}
 

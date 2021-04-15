@@ -77,7 +77,7 @@ public class FirstFragment extends Fragment {
     private static final String FRAGMENT_DIALOG = "dialog";
     private static final String TAG = "Camera2BasicFragment";
     private TensorFlowInferenceInterface inferenceInterface;
-    private Interpreter tflite;
+    private Interpreter tflite, tfliteSpeech;
     TensorImage tensorImageFront, tensorImageRear;
     Viola violaFront;
     Viola violaRear;
@@ -92,6 +92,7 @@ public class FirstFragment extends Fragment {
     byte[] bytesRear;
     JLibrosaTest jLibrosaTest;
     Recorder recorder;
+    float[] meanMfccValues = new float[40];
     ImageProcessor imageProcessor =
             new ImageProcessor.Builder()
                     .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.BILINEAR))
@@ -99,6 +100,7 @@ public class FirstFragment extends Fragment {
 
 
     private String emotions[] = {"Angry", "Disgust","Fear","Surprise","Sad","Happy", "Neutral"};
+    private String emotionsSpeech[] = {"Neutral","Calm","Happy","Sad","Angry","Fearful","Disgust","Surprised"};
 
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -387,7 +389,8 @@ public class FirstFragment extends Fragment {
 
                 recorder.stopRecording();
                 try {
-                    jLibrosaTest.getMfcc();
+                    meanMfccValues = jLibrosaTest.getMfcc();
+                    passMfccToModel(meanMfccValues);
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (WavFileException e) {
@@ -459,12 +462,35 @@ public class FirstFragment extends Fragment {
 
         try {
             tflite = new Interpreter(loadModelFile());
+            tfliteSpeech = new Interpreter(loadModelSpeechFile());
             System.out.println("Model loaded Successfully");
-            System.out.println(tflite);
 
         }catch (Exception ex){
             ex.printStackTrace();
         }
+    }
+
+    private void passMfccToModel(float[] meanMfccValues){
+
+        float reshapedmfcc[][][] = new float[1][40][1];
+        float[][] prediction = new float[1][8];
+        for(int i = 0 ; i<meanMfccValues.length ; i++){
+            reshapedmfcc[0][i][0] = meanMfccValues[i];
+        }
+        tfliteSpeech.run(reshapedmfcc,prediction);
+
+        int maxIndex = 0;
+        float max = prediction[0][0];
+        for(int i = 0 ; i<prediction[0].length ; i++)
+        {
+            if(prediction[0][i]>max)
+            {
+                max = prediction[0][i];
+                maxIndex = i;
+            }
+        }
+
+        Log.d("TAG","Speech Emotion: "+emotionsSpeech[maxIndex]);
     }
 
     private void passImageToTFModel(TensorImage tensorImage, TextView emotionTextView)
@@ -485,7 +511,6 @@ public class FirstFragment extends Fragment {
             }
         }
         tflite.run(resizedarray,prediction);
-        Log.d(String.valueOf(probabilityBuffer),"Probability");
 
         int maxIndex = 0;
         float max = prediction[0][0];
@@ -500,17 +525,26 @@ public class FirstFragment extends Fragment {
         if(emotionTextView.getId() == textViewFront.getId()){
 
             textViewFront.setText(emotions[maxIndex]);
-            Log.d("passImageToTFModel","Emotion Front " + emotions[maxIndex]);
+            //Log.d("passImageToTFModel","Emotion Front " + emotions[maxIndex]);
         }
         else{
             textViewRear.setText(emotions[maxIndex]);
-            Log.d("passImageToTFModel","Emotion Rear " + emotions[maxIndex]);
+            //Log.d("passImageToTFModel","Emotion Rear " + emotions[maxIndex]);
         }
 
     }
 
     private MappedByteBuffer loadModelFile() throws IOException {
         AssetFileDescriptor fileDescriptor=getContext().getAssets().openFd("depth_wise.tflite");
+        FileInputStream inputStream=new FileInputStream(fileDescriptor.getFileDescriptor());
+        FileChannel fileChannel=inputStream.getChannel();
+        long startOffset=fileDescriptor.getStartOffset();
+        long declareLength=fileDescriptor.getDeclaredLength();
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY,startOffset,declareLength);
+    }
+
+    private MappedByteBuffer loadModelSpeechFile() throws IOException {
+        AssetFileDescriptor fileDescriptor=getContext().getAssets().openFd("speech_cnn.tflite");
         FileInputStream inputStream=new FileInputStream(fileDescriptor.getFileDescriptor());
         FileChannel fileChannel=inputStream.getChannel();
         long startOffset=fileDescriptor.getStartOffset();
