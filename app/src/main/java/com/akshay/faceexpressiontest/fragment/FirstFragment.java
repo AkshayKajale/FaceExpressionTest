@@ -9,6 +9,7 @@ import android.media.Image;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Looper;
 import android.util.Range;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -44,6 +45,8 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Semaphore;
 import java.util.Arrays;
 import java.util.Collections;
@@ -91,10 +94,14 @@ public class FirstFragment extends Fragment {
     ByteBuffer bufferFront, bufferRear;
     byte[] bytesFront;
     byte[] bytesRear;
+    Handler audioRecorderhandler;
+    Runnable audioRecorderRunnable;
+    Timer audioTimer;
     JLibrosaTest jLibrosaTest;
     Recorder recorder;
     float[] meanMfccValues = new float[40];
     String emotionStatusVoiceString = null;
+    MyTask myTask;
     ImageProcessor imageProcessor =
             new ImageProcessor.Builder()
                     .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.BILINEAR))
@@ -379,6 +386,29 @@ public class FirstFragment extends Fragment {
 
         );
 
+
+        myTask = new MyTask();
+        audioTimer = new Timer();
+
+
+
+
+
+        recorder.startRecording();
+
+        audioTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                // use runOnUiThread(Runnable action)
+                Log.d("TAG","Timer Called: ");
+                recorder.stopRecording();
+                myTask = new MyTask();
+                myTask.execute("my string parameter");
+
+            }
+        }, 5000,5000);
+
+
         buttonStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -390,18 +420,13 @@ public class FirstFragment extends Fragment {
             @Override
             public void onClick(View v) {
 
+                recorder.stopRecording();
                 new MyTask().execute("my string parameter");
-//                recorder.stopRecording();
-//                try {
-//                    meanMfccValues = jLibrosaTest.getMfcc();
-//                    passMfccToModel(meanMfccValues);
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                } catch (WavFileException e) {
-//                    e.printStackTrace();
-//                }
             }
         });
+
+        buttonStart.setVisibility(View.GONE);
+        buttonStop.setVisibility(View.GONE);
 
         listenerFront = new FaceDetectionListener() {
             @Override
@@ -1244,7 +1269,6 @@ public class FirstFragment extends Fragment {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            recorder.stopRecording();
             textviewSpeech.setText("Processing Audio");
         }
 
@@ -1269,9 +1293,12 @@ public class FirstFragment extends Fragment {
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
             textviewSpeech.setText(result);
+            recorder.startRecording();
             // Do things like hide the progress bar or change a TextView
         }
     }
+
+
 
     public static FirstFragment getFragment() {
         FirstFragment fragment = new FirstFragment();
