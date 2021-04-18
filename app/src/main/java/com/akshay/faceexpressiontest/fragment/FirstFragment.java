@@ -6,6 +6,7 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.res.AssetFileDescriptor;
 import android.media.Image;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Range;
@@ -86,13 +87,14 @@ public class FirstFragment extends Fragment {
     FaceDetectionListener listenerFront;
     FaceDetectionListener listenerRear;
     FaceOptions faceOptionsFront, faceOptionsRear;
-    TextView textViewFront, textViewRear;
+    TextView textViewFront, textViewRear, textviewSpeech;
     ByteBuffer bufferFront, bufferRear;
     byte[] bytesFront;
     byte[] bytesRear;
     JLibrosaTest jLibrosaTest;
     Recorder recorder;
     float[] meanMfccValues = new float[40];
+    String emotionStatusVoiceString = null;
     ImageProcessor imageProcessor =
             new ImageProcessor.Builder()
                     .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.BILINEAR))
@@ -352,6 +354,7 @@ public class FirstFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         textureViewFront = view.findViewById(R.id.texture1);
         textureViewRear = view.findViewById(R.id.texture2);
+        textviewSpeech = view.findViewById(R.id.statusspeechtv);
         rotationMatrix = new Matrix();
         rotationMatrix.postRotate(-90);
         tensorImageRear = new TensorImage(DataType.FLOAT32);
@@ -387,15 +390,16 @@ public class FirstFragment extends Fragment {
             @Override
             public void onClick(View v) {
 
-                recorder.stopRecording();
-                try {
-                    meanMfccValues = jLibrosaTest.getMfcc();
-                    passMfccToModel(meanMfccValues);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (WavFileException e) {
-                    e.printStackTrace();
-                }
+                new MyTask().execute("my string parameter");
+//                recorder.stopRecording();
+//                try {
+//                    meanMfccValues = jLibrosaTest.getMfcc();
+//                    passMfccToModel(meanMfccValues);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                } catch (WavFileException e) {
+//                    e.printStackTrace();
+//                }
             }
         });
 
@@ -489,7 +493,7 @@ public class FirstFragment extends Fragment {
                 maxIndex = i;
             }
         }
-
+        emotionStatusVoiceString = emotionsSpeech[maxIndex];
         Log.d("TAG","Speech Emotion: "+emotionsSpeech[maxIndex]);
     }
 
@@ -1231,6 +1235,41 @@ public class FirstFragment extends Fragment {
                                 }
                             })
                     .create();
+        }
+    }
+
+    private class MyTask extends AsyncTask<String, Integer, String> {
+
+        // Runs in UI before background thread is called
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            recorder.stopRecording();
+            textviewSpeech.setText("Processing Audio");
+        }
+
+        // This is run in a background thread
+        @Override
+        protected String doInBackground(String... params) {
+            try {
+                meanMfccValues = jLibrosaTest.getMfcc();
+                passMfccToModel(meanMfccValues);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (WavFileException e) {
+                e.printStackTrace();
+            }
+
+            return emotionStatusVoiceString;
+        }
+
+
+        // This runs in UI when background thread finishes
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            textviewSpeech.setText(result);
+            // Do things like hide the progress bar or change a TextView
         }
     }
 
