@@ -391,10 +391,8 @@ public class FirstFragment extends Fragment {
         audioTimer = new Timer();
 
 
-
-
-
         recorder.startRecording();
+        textviewSpeech.setText("Recording");
 
         audioTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -406,7 +404,7 @@ public class FirstFragment extends Fragment {
                 myTask.execute("my string parameter");
 
             }
-        }, 5000,5000);
+        }, 5000,10000);
 
 
         buttonStart.setOnClickListener(new View.OnClickListener() {
