@@ -9,7 +9,6 @@ import android.media.Image;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Looper;
 import android.util.Range;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -65,7 +64,6 @@ import com.maple.recorder.recording.MsRecorder;
 import com.maple.recorder.recording.PullTransport;
 import com.maple.recorder.recording.Recorder;
 import org.jetbrains.annotations.NotNull;
-import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.support.image.ImageProcessor;
@@ -80,7 +78,6 @@ public class FirstFragment extends Fragment {
     private static final int REQUEST_CAMERA_PERMISSION = 1;
     private static final String FRAGMENT_DIALOG = "dialog";
     private static final String TAG = "Camera2BasicFragment";
-    private TensorFlowInferenceInterface inferenceInterface;
     private Interpreter tflite, tfliteSpeech;
     TensorImage tensorImageFront, tensorImageRear;
     Viola violaFront;
@@ -94,14 +91,13 @@ public class FirstFragment extends Fragment {
     ByteBuffer bufferFront, bufferRear;
     byte[] bytesFront;
     byte[] bytesRear;
-    Handler audioRecorderhandler;
-    Runnable audioRecorderRunnable;
     Timer audioTimer;
     JLibrosaTest jLibrosaTest;
     Recorder recorder;
     float[] meanMfccValues = new float[40];
     String emotionStatusVoiceString = null;
     MyTask myTask;
+    float smileProbabilityFront, smileProbabilityRear;
     ImageProcessor imageProcessor =
             new ImageProcessor.Builder()
                     .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.BILINEAR))
@@ -383,7 +379,6 @@ public class FirstFragment extends Fragment {
                                 Log.e("TAG", "amplitude: " + audioChunk.maxAmplitude());
                             }
                         })
-
         );
 
 
@@ -429,8 +424,8 @@ public class FirstFragment extends Fragment {
         listenerFront = new FaceDetectionListener() {
             @Override
             public void onFaceDetected(@NotNull Result result) {
-                Log.d("onFaceDetected", "FacePose "+result.getFacePortraits().get(0));
-                Log.d("onFaceDetected", "FaceHeight "+result.getFacePortraits().get(0).getFace().getHeight() + "Width "+result.getFacePortraits().get(0).getFace().getWidth());
+
+                smileProbabilityFront = result.getFacePortraits().get(0).getSmileProbability();
                 cameraBitmapImageFront = result.getFacePortraits().get(0).getFace();
                 cameraBitmapImageFront = toGrayscale(cameraBitmapImageFront);
                 cameraBitmapImageFront = Bitmap.createScaledBitmap(cameraBitmapImageFront, cameraBitmapImageFront.getWidth(), cameraBitmapImageFront.getHeight(), true);
@@ -439,7 +434,7 @@ public class FirstFragment extends Fragment {
                 tensorImageFront = imageProcessor.process(tensorImageFront);
                 Log.d(TAG, "bitmap: height " + tensorImageFront.getHeight());
                 //System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImageFront.getTensorBuffer().getFloatArray()));
-                passImageToTFModel(tensorImageFront, textViewFront);
+                passImageToTFModel(tensorImageFront, textViewFront,smileProbabilityFront);
                 //latestImage.close();
             }
 
@@ -452,8 +447,8 @@ public class FirstFragment extends Fragment {
         listenerRear = new FaceDetectionListener() {
             @Override
             public void onFaceDetected(@NotNull Result result) {
-                Log.d("onFaceDetected", "FacePose Rear "+result.getFacePortraits().get(0));
-                Log.d("onFaceDetected", "FaceHeight Rear "+result.getFacePortraits().get(0).getFace().getHeight() + "Width "+result.getFacePortraits().get(0).getFace().getWidth());
+
+                smileProbabilityRear = result.getFacePortraits().get(0).getSmileProbability();
                 cameraBitmapImageRear = result.getFacePortraits().get(0).getFace();
                 cameraBitmapImageRear = toGrayscale(cameraBitmapImageRear);
                 cameraBitmapImageRear = Bitmap.createScaledBitmap(cameraBitmapImageRear, cameraBitmapImageRear.getWidth(), cameraBitmapImageRear.getHeight(), true);
@@ -462,7 +457,7 @@ public class FirstFragment extends Fragment {
                 tensorImageRear = imageProcessor.process(tensorImageRear);
                 Log.d(TAG, "bitmap: height " + tensorImageRear.getHeight());
                 //System.out.println("Tensor Image Type Size"+Arrays.toString(tensorImageRear.getTensorBuffer().getFloatArray()));
-                passImageToTFModel(tensorImageRear,textViewRear);
+                passImageToTFModel(tensorImageRear,textViewRear,smileProbabilityRear);
                 //latestImage.close();
             }
 
@@ -520,11 +515,12 @@ public class FirstFragment extends Fragment {
         Log.d("TAG","Speech Emotion: "+emotionsSpeech[maxIndex]);
     }
 
-    private void passImageToTFModel(TensorImage tensorImage, TextView emotionTextView)
+    private void passImageToTFModel(TensorImage tensorImage, TextView emotionTextView, float smileProbability)
     {
 
         Log.d(String.valueOf(tensorImage.getHeight()),"Height");
         Log.d(String.valueOf(tensorImage.getWidth()),"Width");
+
         TensorBuffer probabilityBuffer = TensorBuffer.createDynamic(DataType.FLOAT32);
         float[][] prediction = new float[1][7];
         float image [] = tensorImage.getTensorBuffer().getFloatArray();
@@ -549,14 +545,28 @@ public class FirstFragment extends Fragment {
                 maxIndex = i;
             }
         }
+
+        //Log.d("TAG","Emotion Probability Array: "+Arrays.deepToString(prediction));
+
+        Log.d("TAG","Smile Probability: "+smileProbability+" "+"Current Probability: "+max);
         if(emotionTextView.getId() == textViewFront.getId()){
 
-            textViewFront.setText(emotions[maxIndex]);
-            //Log.d("passImageToTFModel","Emotion Front " + emotions[maxIndex]);
+            if(smileProbability>0.5){
+                textViewFront.setText("Happy");
+            }
+            else{
+                textViewFront.setText(emotions[maxIndex]);
+            }
         }
         else{
-            textViewRear.setText(emotions[maxIndex]);
-            //Log.d("passImageToTFModel","Emotion Rear " + emotions[maxIndex]);
+
+            if(smileProbability>0.5){
+                textViewRear.setText("Happy");
+            }
+            else{
+                textViewRear.setText(emotions[maxIndex]);
+            }
+
         }
 
     }
@@ -1159,15 +1169,13 @@ public class FirstFragment extends Fragment {
                         @Override
                         public void onConfigureFailed(
                                 @NonNull CameraCaptureSession cameraCaptureSession) {
-                            Log.d(TAG, "CaptureSession Failed");
+                            Log.d(TAG, "Capture Session Failed");
                         }
                     }, null
             );
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
-
-
     }
 
     private static Size chooseOptimalSize(Size[] choices, int textureViewWidth,
@@ -1281,10 +1289,8 @@ public class FirstFragment extends Fragment {
             } catch (WavFileException e) {
                 e.printStackTrace();
             }
-
             return emotionStatusVoiceString;
         }
-
 
         // This runs in UI when background thread finishes
         @Override
@@ -1296,11 +1302,8 @@ public class FirstFragment extends Fragment {
         }
     }
 
-
-
     public static FirstFragment getFragment() {
         FirstFragment fragment = new FirstFragment();
         return fragment;
     }
-
 }
