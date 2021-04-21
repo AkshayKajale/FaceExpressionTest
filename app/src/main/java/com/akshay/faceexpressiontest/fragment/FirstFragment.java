@@ -407,7 +407,7 @@ public class FirstFragment extends Fragment {
             public void run() {
                 // use runOnUiThread(Runnable action)
                 Log.d("TAG","Timer Called: ");
-                speechEmotionCount += 5;
+                speechEmotionCount += 1;
                 recorder.stopRecording();
                 try {
                     Thread.sleep(5000);
