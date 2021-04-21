@@ -621,8 +621,7 @@ public class FirstFragment extends Fragment {
             domintantEmotion = maxSpeechCount*ws;
         }
 
-        //domintantEmotion = Math.max(maxFaceCount*wf, maxSpeechCount*ws);
-        Log.d("TAG","Final Emotion: "+combinedEmotion+"Probability: "+domintantEmotion);
+        Log.d("TAG","Final Emotion: "+combinedEmotion+" "+"Probability: "+domintantEmotion);
         faceEmotionsCount = new int[7];
         speechEmotionsCount = new int[8];
     }
