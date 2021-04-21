@@ -98,6 +98,15 @@ public class FirstFragment extends Fragment {
     String emotionStatusVoiceString = null;
     MyTask myTask;
     float smileProbabilityFront, smileProbabilityRear;
+    int faceExpressCount = 0;
+    int speechEmotionCount = 0;
+    double wf = 0.55;
+    double ws = 0.38;
+    double domintantEmotion = 0.0;
+    int maxFaceCount, maxSpeechCount;
+    String combinedEmotion = null;
+    String currentFaceEmotion = null;
+    String currentSpeechEmotion = null;
     ImageProcessor imageProcessor =
             new ImageProcessor.Builder()
                     .add(new ResizeOp(48, 48, ResizeOp.ResizeMethod.BILINEAR))
@@ -105,7 +114,9 @@ public class FirstFragment extends Fragment {
 
 
     private String emotions[] = {"Angry", "Disgust","Fear","Surprise","Sad","Happy", "Neutral"};
-    private String emotionsSpeech[] = {"Neutral","Calm","Happy","Sad","Angry","Fearful","Disgust","Surprised"};
+    private String emotionsSpeech[] = {"Neutral","Calm","Happy","Sad","Angry","Fearful","Disgust","Surprise"};
+    int faceEmotionsCount[] = new int[7];
+    int speechEmotionsCount[] = new int[8];
 
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -394,7 +405,13 @@ public class FirstFragment extends Fragment {
             public void run() {
                 // use runOnUiThread(Runnable action)
                 Log.d("TAG","Timer Called: ");
+                speechEmotionCount += 5;
                 recorder.stopRecording();
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 myTask = new MyTask();
                 myTask.execute("my string parameter");
 
@@ -494,6 +511,7 @@ public class FirstFragment extends Fragment {
 
     private void passMfccToModel(float[] meanMfccValues){
 
+        speechEmotionCount++;
         float reshapedmfcc[][][] = new float[1][40][1];
         float[][] prediction = new float[1][8];
         for(int i = 0 ; i<meanMfccValues.length ; i++){
@@ -512,16 +530,13 @@ public class FirstFragment extends Fragment {
             }
         }
         emotionStatusVoiceString = emotionsSpeech[maxIndex];
-        Log.d("TAG","Speech Emotion: "+emotionsSpeech[maxIndex]);
+        speechEmotionsCount[maxIndex]++;
+        //Log.d("TAG","Speech Emotion Array: "+Arrays.deepToString(prediction));
     }
 
     private void passImageToTFModel(TensorImage tensorImage, TextView emotionTextView, float smileProbability)
     {
-
-        Log.d(String.valueOf(tensorImage.getHeight()),"Height");
-        Log.d(String.valueOf(tensorImage.getWidth()),"Width");
-
-        TensorBuffer probabilityBuffer = TensorBuffer.createDynamic(DataType.FLOAT32);
+        faceExpressCount++;
         float[][] prediction = new float[1][7];
         float image [] = tensorImage.getTensorBuffer().getFloatArray();
         float [][][][] resizedarray = new float[1][48][48][1];
@@ -553,22 +568,63 @@ public class FirstFragment extends Fragment {
 
             if(smileProbability>0.5){
                 textViewFront.setText("Happy");
+                faceEmotionsCount[5]++;
             }
             else{
                 textViewFront.setText(emotions[maxIndex]);
+                faceEmotionsCount[maxIndex]++;
             }
         }
         else{
 
             if(smileProbability>0.5){
                 textViewRear.setText("Happy");
+                faceEmotionsCount[5]++;
             }
             else{
                 textViewRear.setText(emotions[maxIndex]);
+                faceEmotionsCount[maxIndex]++;
             }
 
         }
 
+        if(faceExpressCount%5 ==  0 || speechEmotionCount%5 == 0){
+            getCombinedEmotion();
+        }
+
+    }
+
+    private void getCombinedEmotion(){
+
+        maxFaceCount = faceEmotionsCount[0];
+        for(int i = 1 ; i<faceEmotionsCount.length ; i++){
+            if(maxFaceCount<faceEmotionsCount[i]){
+                maxFaceCount = faceEmotionsCount[i];
+                currentFaceEmotion = emotions[i];
+            }
+        }
+
+        maxSpeechCount = speechEmotionsCount[0];
+        for(int i = 1 ; i<speechEmotionsCount.length ; i++){
+            if(maxSpeechCount<speechEmotionsCount[i]){
+                maxSpeechCount = speechEmotionsCount[i];
+                currentSpeechEmotion = emotionsSpeech[i];
+            }
+        }
+
+        if(maxFaceCount*wf > maxSpeechCount*ws){
+            combinedEmotion = currentFaceEmotion;
+            domintantEmotion = maxFaceCount*wf;
+        }
+        else{
+            combinedEmotion = currentSpeechEmotion;
+            domintantEmotion = maxSpeechCount*ws;
+        }
+
+        //domintantEmotion = Math.max(maxFaceCount*wf, maxSpeechCount*ws);
+        Log.d("TAG","Final Emotion: "+combinedEmotion+"Probability: "+domintantEmotion);
+        faceEmotionsCount = new int[7];
+        speechEmotionsCount = new int[8];
     }
 
     private MappedByteBuffer loadModelFile() throws IOException {
