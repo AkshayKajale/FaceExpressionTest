@@ -418,7 +418,7 @@ public class FirstFragment extends Fragment {
                 myTask.execute("my string parameter");
 
             }
-        }, 5000,10000);
+        }, 10000,10000);
 
 
         buttonStart.setOnClickListener(new View.OnClickListener() {
