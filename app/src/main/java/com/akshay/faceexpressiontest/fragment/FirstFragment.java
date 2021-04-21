@@ -98,12 +98,14 @@ public class FirstFragment extends Fragment {
     String emotionStatusVoiceString = null;
     MyTask myTask;
     float smileProbabilityFront, smileProbabilityRear;
-    int faceExpressCount = 0;
-    int speechEmotionCount = 0;
+    int faceExpressCount = 1;
+    int speechEmotionCount = 1;
     double wf = 0.55;
     double ws = 0.38;
     double domintantEmotion = 0.0;
     int maxFaceCount, maxSpeechCount;
+    int totalCountFace = 0;
+    int totalCountSpeech = 0;
     String combinedEmotion = null;
     String currentFaceEmotion = null;
     String currentSpeechEmotion = null;
@@ -588,7 +590,7 @@ public class FirstFragment extends Fragment {
 
         }
 
-        if(faceExpressCount%5 ==  0 || speechEmotionCount%5 == 0){
+        if(faceExpressCount%10 ==  0 || speechEmotionCount%10 == 0){
             getCombinedEmotion();
         }
 
@@ -596,21 +598,34 @@ public class FirstFragment extends Fragment {
 
     private void getCombinedEmotion(){
 
+        totalCountFace = 1;
+        totalCountSpeech = 1;
         maxFaceCount = faceEmotionsCount[0];
+        currentFaceEmotion = emotions[0];
         for(int i = 1 ; i<faceEmotionsCount.length ; i++){
+            totalCountFace += faceEmotionsCount[i];
             if(maxFaceCount<faceEmotionsCount[i]){
                 maxFaceCount = faceEmotionsCount[i];
                 currentFaceEmotion = emotions[i];
             }
         }
 
+        maxFaceCount = maxFaceCount/totalCountFace;
+
         maxSpeechCount = speechEmotionsCount[0];
+        currentSpeechEmotion = emotionsSpeech[0];
         for(int i = 1 ; i<speechEmotionsCount.length ; i++){
+            totalCountSpeech += speechEmotionsCount[i];
             if(maxSpeechCount<speechEmotionsCount[i]){
                 maxSpeechCount = speechEmotionsCount[i];
                 currentSpeechEmotion = emotionsSpeech[i];
+
             }
         }
+
+        maxSpeechCount = maxSpeechCount/totalCountSpeech;
+        //Log.d("TAG","Array Face: "+Arrays.toString(faceEmotionsCount));
+        //Log.d("TAG","Array Emotion: "+Arrays.toString(speechEmotionsCount));
 
         if(maxFaceCount*wf > maxSpeechCount*ws){
             combinedEmotion = currentFaceEmotion;
