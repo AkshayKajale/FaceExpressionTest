@@ -88,7 +88,6 @@ public class JLibrosaTest {
 
             Log.d("TAG","Mean MFCC Values: "+ Arrays.toString(meanMFCCValues));
             return meanMFCCValues;
-
 	}
 
 }
