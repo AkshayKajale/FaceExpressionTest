@@ -82,12 +82,11 @@ public class FirstFragment extends Fragment {
     TensorImage tensorImageFront, tensorImageRear;
     Viola violaFront;
     Viola violaRear;
-    Button buttonStart, buttonStop;
     Bitmap cameraBitmapImageFront, cameraBitmapImageRear ;
     FaceDetectionListener listenerFront;
     FaceDetectionListener listenerRear;
     FaceOptions faceOptionsFront, faceOptionsRear;
-    TextView textViewFront, textViewRear, textviewSpeech;
+    TextView textViewFront, textViewRear, textviewSpeech,textViewCombined;
     ByteBuffer bufferFront, bufferRear;
     byte[] bytesFront;
     byte[] bytesRear;
@@ -377,8 +376,7 @@ public class FirstFragment extends Fragment {
         tensorImageFront = new TensorImage(DataType.FLOAT32);
         textViewFront = view.findViewById(R.id.textview1);
         textViewRear = view.findViewById(R.id.textview2);
-        buttonStart = view.findViewById(R.id.startButton);
-        buttonStop = view.findViewById(R.id.stopButton);
+        textViewCombined = view.findViewById(R.id.combinedemotiontv);
         jLibrosaTest = new JLibrosaTest();
         Log.d("TAG","Path "+Environment.getExternalStorageDirectory().getAbsolutePath()+"/");
 
@@ -420,25 +418,6 @@ public class FirstFragment extends Fragment {
             }
         }, 10000,10000);
 
-
-        buttonStart.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                recorder.startRecording();
-            }
-        });
-
-        buttonStop.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                recorder.stopRecording();
-                new MyTask().execute("my string parameter");
-            }
-        });
-
-        buttonStart.setVisibility(View.GONE);
-        buttonStop.setVisibility(View.GONE);
 
         listenerFront = new FaceDetectionListener() {
             @Override
@@ -592,6 +571,7 @@ public class FirstFragment extends Fragment {
 
         if(faceExpressCount%10 ==  0 || speechEmotionCount%10 == 0){
             getCombinedEmotion();
+
         }
 
     }
@@ -636,7 +616,7 @@ public class FirstFragment extends Fragment {
             domintantEmotion = maxSpeechCount*ws;
         }
 
-        Log.d("TAG","Final Emotion: "+combinedEmotion+" "+"Probability: "+domintantEmotion);
+        textViewCombined.setText(combinedEmotion);
         faceEmotionsCount = new int[7];
         speechEmotionsCount = new int[8];
     }
@@ -1345,7 +1325,6 @@ public class FirstFragment extends Fragment {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            textviewSpeech.setText("Processing Audio");
         }
 
         // This is run in a background thread
