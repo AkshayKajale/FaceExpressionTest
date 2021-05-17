@@ -548,22 +548,22 @@ public class FirstFragment extends Fragment {
         if(emotionTextView.getId() == textViewFront.getId()){
 
             if(smileProbability>0.5){
-                textViewFront.setText("Happy");
+                textViewFront.setText("Front Happy");
                 faceEmotionsCount[5]++;
             }
             else{
-                textViewFront.setText(emotions[maxIndex]);
+                textViewFront.setText("Front "+emotions[maxIndex]);
                 faceEmotionsCount[maxIndex]++;
             }
         }
         else{
 
             if(smileProbability>0.5){
-                textViewRear.setText("Happy");
+                textViewRear.setText("Front Happy");
                 faceEmotionsCount[5]++;
             }
             else{
-                textViewRear.setText(emotions[maxIndex]);
+                textViewRear.setText("Rear "+emotions[maxIndex]);
                 faceEmotionsCount[maxIndex]++;
             }
 
@@ -616,7 +616,7 @@ public class FirstFragment extends Fragment {
             domintantEmotion = maxSpeechCount*ws;
         }
 
-        textViewCombined.setText(combinedEmotion);
+        textViewCombined.setText("Final "+combinedEmotion);
         faceEmotionsCount = new int[7];
         speechEmotionsCount = new int[8];
     }
@@ -1345,7 +1345,7 @@ public class FirstFragment extends Fragment {
         @Override
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
-            textviewSpeech.setText(result);
+            textviewSpeech.setText("Speech "+result);
             recorder.startRecording();
             // Do things like hide the progress bar or change a TextView
         }
