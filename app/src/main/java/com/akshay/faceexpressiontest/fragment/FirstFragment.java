@@ -559,7 +559,7 @@ public class FirstFragment extends Fragment {
         else{
 
             if(smileProbability>0.5){
-                textViewRear.setText("Front Happy");
+                textViewRear.setText("Rear Happy");
                 faceEmotionsCount[5]++;
             }
             else{
